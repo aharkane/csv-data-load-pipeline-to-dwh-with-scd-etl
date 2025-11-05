@@ -1,854 +1,692 @@
-# 🏭 AdventureWorks Products ETL Pipeline
-### SSIS-Based Product Dimension Loading with SCD Type 1 & 2 Implementation
+# SSIS ETL Packages: Products Data Pipeline
 
-[![SQL Server](https://img.shields.io/badge/SQL%20Server-2022-CC2927?logo=microsoft-sql-server&logoColor=white)](https://www.microsoft.com/sql-server)
-[![SSIS](https://img.shields.io/badge/SSIS-ETL%20Pipeline-0078D4?logo=microsoft&logoColor=white)](https://docs.microsoft.com/sql/integration-services)
-[![T-SQL](https://img.shields.io/badge/T--SQL-Advanced-316192?logo=postgresql&logoColor=white)](https://docs.microsoft.com/sql/t-sql)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-
-> **Production-ready SSIS ETL pipeline for automated product dimension loading from CSV files into the AdventureWorks Data Warehouse, featuring SCD Type 1 & 2 logic.**
+Advanced SQL Server Integration Services (SSIS) implementation showcasing enterprise-grade extract, transform, and load operations for product catalog management with slowly changing dimension handling.
 
 ---
 
-## 📋 Table of Contents
+## Table of Contents
 
-- [Technical Skills Demonstrated](#technical-skills-demonstrated)
-- [Project Overview](#project-overview)
-- [System Architecture](#system-architecture)
-- [Key Features](#key-features)
-- [Project Structure](#project-structure)
-- [Getting Started](#getting-started)
-- [ETL Process Flow](#etl-process-flow)
-- [Command-Line Tools](#command-line-tools)
-- [Data Model](#data-model)
-- [Performance Metrics](#performance-metrics)
-- [Related Projects](#related-projects)
-- [Author](#author)
-- [License](#license)
+1. [Overview](#overview)
+2. [Technical Skills Demonstrated](#technical-skills-demonstrated)
+3. [Project Architecture](#project-architecture)
+4. [Package 1: Products RowByRow ETL](#package-1-products-rowbyrow-etl)
+5. [Package 2: Products Loop ETL](#package-2-products-loop-etl)
+6. [Data Flow Design Patterns](#data-flow-design-patterns)
+7. [Key Transformations](#key-transformations)
+8. [Implementation Highlights](#implementation-highlights)
+9. [Data Processing Workflow](#data-processing-workflow)
+
+---
+
+## Overview
+
+This project demonstrates a comprehensive ETL solution built with SQL Server Integration Services (SSIS) for managing product data lifecycle. The implementation includes two distinct approaches to data processing: a row-by-row streaming pipeline and a multi-file loop processing engine, both implementing slowly changing dimension (SCD) Type 2 methodology for handling product data changes over time.
+
+The solution processes product information including categories, subcategories, pricing, sizing, and validity dates—transforming raw flat file data into a clean, dimensional data warehouse structure with full change tracking and historical audit trails.
 
 ---
 
 ## Technical Skills Demonstrated
 
-<table>
-<tr>
-<td width="55%" valign="top">
+### SSIS Fundamentals
 
-**SSIS Development**
-- ✅ Data Flow Task Design
-- ✅ Control Flow Orchestration
-- ✅ Flat File Sources (CSV)
-- ✅ OLE DB Destinations
-- ✅ Lookup Transformations
-- ✅ Conditional Split Logic
+- **Package Development & Design**: Created production-ready SSIS packages with version control (v17.0.1008.3)
+- **Data Flow Tasks**: Implemented complex pipeline architectures with multiple source-to-destination transformations
+- **Control Flow**: Designed container hierarchies with nested loops and conditional execution logic
+- **Variables & Expressions**: Utilized parameterized variables for dynamic configuration and file path management
+- **Connection Management**: Configured OLE DB connections for SQL Server staging and destination tables
 
-**ETL Best Practices**
-- ✅ Incremental Data Loading
-- ✅ Change Data Capture (CDC)
-- ✅ SCD Type 1 & 2 Implementation
-- ✅ Error Handling & Logging
-- ✅ Data Validation
-- ✅ Transaction Management
+### Data Transformation Techniques
 
-</td>
-<td width="50%" valign="top">
+- **Derived Column Transformations**: Created calculated fields including change tracking (`IsCurrent`) columns and date trimming operations
+- **Conditional Split Logic**: Implemented branch-based routing to separate new inserts from product updates
+- **Lookup Transformations**: Performed dimensional lookups to identify existing product IDs and detect changes
+- **Union All Operations**: Merged multiple data streams from different transformation branches
+- **Row Sampling & Counting**: Implemented row count metrics and change detection filtering
+- **OLE DB Command Execution**: Direct SQL execution for handling product updates including price and name changes
 
-**Data Integration**
-- ✅ CSV File Processing
-- ✅ Bulk Data Import (BCP)
-- ✅ Dynamic File Processing
-- ✅ ForEach Loop Containers
-- ✅ Variable-Driven ETL
-- ✅ Parallel Execution
+### Advanced ETL Patterns
 
-**SQL Server Tools**
-- ✅ BCP Utility (Bulk Copy)
-- ✅ SQLCMD Scripting
-- ✅ SQL Server Agent Jobs
-- ✅ SSIS Catalog Deployment
-- ✅ Connection Management
-- ✅ Performance Tuning
+- **Slowly Changing Dimension Type 2**: Full historical tracking with `IsCurrent` flags and validity date ranges (`ValidityDate_Start`, `ValidityDate_End`)
+- **Change Data Detection**: Sophisticated logic to identify which products have been modified (name changes, price updates)
+- **Incremental Processing**: Row counting and staging mechanisms for monitoring data flow volumes
+- **File-Based Looping**: Foreach enumerator pattern for processing multiple CSV source files in sequence
 
-</td>
-</tr>
-</table>
+### SQL Server Integration
 
----
+- **Staging Tables**: Implemented multi-layer staging architecture for data validation and error handling
+- **Destination Mapping**: Direct OLE DB destination writes with column mapping and data type conversions
+- **Audit Trails**: Captured row counts and processing metrics for data quality monitoring
+- **Dimension Tables**: Created and maintained slowly changing dimension tables with historical records
 
-## Project Overview
+### Data Quality & Validation
 
-This SSIS ETL pipeline is part of the **AdventureWorks Sales Analytics Platform**. It automates the extraction, transformation, and loading of product dimension data from CSV files into the enterprise data warehouse.
+- **Data Type Handling**: Proper conversion of dates, strings, decimals (pricing), and dimensional keys
+- **Null Handling**: Conditional routing for records with missing category/subcategory data
+- **Date Standardization**: Trimming and formatting of SellStartDate, SellEndDate, and DiscontinuedDate fields
+- **Dimensional Integrity**: Lookup-based validation ensuring referential integrity with product categories
 
-### What This Project Does
+### Development Environment
 
-- 🔄 **Automated ETL**: Processes CSV product update files
-- 🔀 **Data Transformation**: Enriches product attributes (categories, subcategories, pricing)
-- 📊 **Dimension Loading**: Loads DimProduct with full SCD logic
-- ✅ **Data Quality**: Validates integrity and completeness
-- 📈 **Monitoring**: Logs execution metrics and tracks changes
-- 🔗 **Integration**: Seamlessly connects to enterprise DWH
-
-### Business Context
-
-Product dimension is critical for sales analytics:
-- 📦 Product catalog management (504 active products)
-- 💰 Pricing strategy tracking (historical and current)
-- 📂 Category and subcategory organization
-- 🎨 Product attributes (color, size, style, line)
-
-### Project Statistics
-
-- **2 SSIS Packages** (Single File & Multi-File variants)
-- **1 Sample CSV File** (ProductsUpdates.csv)
-- **504 Products** processed
-- **4 Categories** and **37 Subcategories**
-- **SCD Type 1 & 2** implementation
-- **<30 seconds** execution time
+- **Version Control**: SSIS projects ready for Git/GitHub integration and collaborative development
+- **Documentation**: Comprehensive task naming and description conventions for maintainability
+- **Performance Optimization**: Designed for both row-by-row precision and bulk processing efficiency
 
 ---
 
-## System Architecture
+## Project Architecture
+
+### High-Level Design Pattern
+
+```
+CSV Source Data
+       ↓
+   [Parser/Validation]
+       ↓
+   [Transformation Pipeline]
+   ├── Derived Columns (IsCurrent, Date Trim)
+   ├── Lookup (Product ID Matching)
+   ├── Conditional Split (Insert vs. Update)
+   └── Union All (Merge Streams)
+       ↓
+[Staging Layer]
+       ↓
+[Destination Tables]
+   ├── Products DB Table (Final Warehouse)
+   └── Staging Table (Intermediate)
+       ↓
+[SQL Scripts]
+   ├── SCD Type 2 Processing
+   ├── Row Count Metrics
+   └── Table Maintenance
+```
+
+### Processing Approaches
+
+| Aspect | Package 1 (RowByRow) | Package 2 (Loop) |
+|--------|----------------------|------------------|
+| **Processing Model** | Single Data Flow Task | Foreach Loop Container |
+| **Input Source** | Single CSV File | Multiple CSV Files |
+| **Scaling** | Row-by-row precision | Batch processing efficiency |
+| **Iteration** | Direct execution | Enumerated file loop |
+| **Data Staging** | Direct to destination | Multi-layer staging |
+| **Change Handling** | In-pipeline splitting | Staging + SQL post-processing |
+
+---
+
+## Package 1: Products RowByRow ETL
+
+### Purpose
+
+High-fidelity, row-by-row ETL pipeline designed for precision processing of product updates with immediate change detection and routing.
+
+### Package Metadata
+
+- **Name**: Products RowByRow ETL
+- **Creation Date**: August 7, 2025
+- **SSIS Version**: 17.0.1008.3
+- **Execution Type**: Single Data Flow Task (Microsoft.Pipeline)
 
 ### Data Flow Architecture
 
+#### 1. **Products Source** (FlatFileSource)
+- **Input**: Flat file (CSV) containing product records
+- **Purpose**: Primary data ingestion point
+- **Output**: Raw product dataset with all dimensional attributes
+
+#### 2. **Trim Dates** (Derived Column - #1)
+- **Input**: Raw product data from source
+- **Transformation**: Date field standardization and trimming
+- **Applies to**: SellStartDate, SellEndDate, DiscontinuedDate fields
+- **Output**: Cleansed date columns
+
+#### 3. **Lookup for New ProductID** (Lookup)
+- **Purpose**: Cross-reference with existing product dimension
+- **Logic**: Matches current products against historical product master
+- **Output**: New product ID flag or existing reference ID
+- **Handles**: Detection of new vs. existing products
+
+#### 4. **Add IsCurrent Column** (Derived Column - #2)
+- **Logic**: Creates slowly changing dimension Type 2 flag
+- **Expression**: IsCurrent = 1 (for all rows - marking as current version)
+- **Complements**: ValidityDate_Start and ValidityDate_End for historical tracking
+- **Output**: Dimensional flag for temporal tracking
+
+#### 5. **Split Based on Changes** (Conditional Split)
+- **Routing Logic**: 
+  - **Change Stream**: Records with ProductName or UnitPrice modifications
+  - **No Change Stream**: Records without detected changes
+- **Uses**: Lookup results and field comparison conditions
+- **Output**: Two branched streams for differential processing
+
+#### 6. **Change Processing Branch**
+- **ProductName Change** (OLE DB Command): Direct SQL UPDATE for name modifications
+- **UnitPrice Change** (OLE DB Command): Direct SQL UPDATE for price modifications
+- **Execution**: Direct command execution against destination database
+
+#### 7. **No Change Processing Branch**
+- **No changes Row Count** (Row Sampling): Counting and sampling unchanged records
+- **Purpose**: Metrics collection for audit trails
+
+#### 8. **Union All** (UnionAll)
+- **Merge Logic**: Combines both change and no-change processing branches
+- **Purpose**: Unified stream before final destination write
+
+#### 9. **OLE DB Destination** (OLEDBDestination)
+- **Target Table**: Products warehouse table
+- **Mode**: Bulk insert of processed records
+- **Output**: Final dimensional table with all transformations applied
+
+### Transformation Logic Summary
+
 ```
-┌─────────────────────────────────────────────────────────────────────┐
-│                        SOURCE FILES (CSV)                           │
-│                      ProductsUpdates.csv                            │
-│  ┌──────────────────────────────────────────────────────────────┐  │
-│  │ ProductNumber, ProductID, ProductName, ListPrice,            │  │
-│  │ StandardCost, ProductColor, ProductSize, SellStartDate,      │  │
-│  │ ProductCategoryID, ProductSubcategoryID, etc.                │  │
-│  └──────────────────────────────────────────────────────────────┘  │
-└─────────────────────────────────────────────────────────────────────┘
-                             │
-                   ▼ SSIS Package (ETL.xml) ▼
-                             │
-┌─────────────────────────────────────────────────────────────────────┐
-│                      ETL PROCESSING LAYER                           │
-│                                                                     │
-│  ┌────────────────────────────────────────────────────────────┐   │
-│  │              1. EXTRACT (Flat File Source)                  │   │
-│  │  • Read CSV files from folder                              │   │
-│  │  • Parse columns and data types                            │   │
-│  │  • Filter by updated dates                                 │   │
-│  │  • ForEach loop for multiple files                         │   │
-│  └────────────────────────────────────────────────────────────┘   │
-│                             │                                       │
-│                             ▼                                       │
-│  ┌────────────────────────────────────────────────────────────┐   │
-│  │              2. TRANSFORM (Data Flow Tasks)                 │   │
-│  │  • Lookup: Existing ProductID in DimProduct               │   │
-│  │  • Derived Column: Add IsCurrent flag                     │   │
-│  │  • Derived Column: Trim & convert dates                   │   │
-│  │  • Conditional Split: Route by change type                │   │
-│  │    ├─> No Change (unchanged products)                     │   │
-│  │    ├─> SCD Type 1 (ProductName changed)                   │   │
-│  │    └─> SCD Type 2 (ListPrice changed)                     │   │
-│  └────────────────────────────────────────────────────────────┘   │
-│                             │                                       │
-│                             ▼                                       │
-│  ┌────────────────────────────────────────────────────────────┐   │
-│  │                 3. LOAD (OLE DB Destination)                │   │
-│  │  • Insert new products (No Match from Lookup)              │   │
-│  │  • Update existing (SCD Type 1)                            │   │
-│  │  • Version existing + Insert new (SCD Type 2)              │   │
-│  │  • Update IsCurrent flags                                  │   │
-│  │  • Set ValidityDate_Start/End                              │   │
-│  └────────────────────────────────────────────────────────────┘   │
-└─────────────────────────────────────────────────────────────────────┘
-                             │
-                             ▼
-┌─────────────────────────────────────────────────────────────────────┐
-│       DATA WAREHOUSE (AdventureWorks2022DWH)                       │
-│  ┌────────────────────────────────────────────────────────────┐   │
-│  │  prod.DimProduct                                           │   │
-│  │  ┌──────────────────────────────────────────────────────┐  │   │
-│  │  │ ProductDWKey (PK, IDENTITY)                          │  │   │
-│  │  │ ProductID (Business Key)                             │  │   │
-│  │  │ ProductName, Category, Subcategory                   │  │   │
-│  │  │ ListPrice (SCD Type 2) ← Historical versions         │  │   │
-│  │  │ StandardCost, ProductColor, ProductSize              │  │   │
-│  │  │ IsCurrent, ValidityDate_Start, ValidityDate_End      │  │   │
-│  │  └──────────────────────────────────────────────────────┘  │   │
-│  └────────────────────────────────────────────────────────────┘   │
-└─────────────────────────────────────────────────────────────────────┘
+Raw CSV → Date Trim → Lookup → IsCurrent Flag → Split Changes
+                                                  ├→ UPDATE Changes → Union All → Destination
+                                                  └→ Count No-Changes
 ```
 
 ---
 
-## Key Features
+## Package 2: Products Loop ETL
 
-### 1. Dual Package Architecture
+### Purpose
 
-#### Package 1: Single File Processing (`1.-ETL_Products_single_File.xml`)
-- **Purpose**: Process one CSV file at a time
-- **Use Case**: Small loads, manual execution, testing
-- **Execution**: Row-by-row processing with full transformation
-- **Best For**: Development environments, proof of concept
+Enterprise-scale ETL pipeline with foreach looping capability, processing multiple CSV source files sequentially with comprehensive staging and SQL post-processing for slowly changing dimension implementation.
 
-#### Package 2: Multi-File Processing (`2.-ETL_Products_Multi_Files.xml`)
-- **Purpose**: Process multiple CSV files from a folder
-- **Use Case**: Batch processing, automated daily loads
-- **Execution**: ForEach Loop Container iterates through files
-- **Best For**: Production environments, scheduled jobs
+### Package Metadata
 
-### 2. Slowly Changing Dimensions Implementation
+- **Name**: Products Loop ETL
+- **Creation Date**: August 7, 2025
+- **SSIS Version**: 17.0.1008.3
+- **Variables**: 2 user-defined parameters
 
-| Attribute | SCD Type | Change Handling | History Kept |
-|-----------|----------|-----------------|--------------|
-| **ProductName** | Type 1 | Overwrite current value | No |
-| **StandardCost** | Type 1 | Overwrite current value | No |
-| **ProductColor** | Type 1 | Overwrite current value | No |
-| **ListPrice** | Type 2 | Create new version | Yes ⭐ |
-| **ProductID** | Type 0 | Never changes (Natural Key) | N/A |
+### User Variables
 
-### 3. Data Flow Transformations
+| Variable Name | Type | Purpose | Example Value |
+|---------------|------|---------|---|
+| `FileNamePath` | String | Root directory for CSV source files | `D:\...\SSIS\1. Products Data Flow\Data` |
+| `RowCountVar` | Integer | Counter for row-level metrics | 0 (initialized) |
 
-**Lookup Transformation:**
-- Queries prod.DimProduct for existing ProductID
-- Retrieves ProductName and ListPrice for comparison
-- Routes to "Match" or "No Match" output
+### Control Flow Structure
 
-**Derived Column Transformation:**
-- Adds `IsCurrent = 1` for new records
-- Converts date strings to `DATETIME` format
-- Trims whitespace from text fields
+#### 1. **Products Csv Source Foreach Loop** (Foreach Loop Container)
 
-**Conditional Split Transformation:**
-- **No Change**: ProductName AND ListPrice unchanged → Skip loading
-- **SCD Type 1**: ProductName changed → UPDATE existing record
-- **SCD Type 2**: ListPrice changed → Version old record + INSERT new
+**Enumerator Configuration**:
+- **Type**: ForEachFileEnumerator
+- **Source Folder**: Points to `FileNamePath` variable
+- **File Pattern**: Wildcard pattern `*.csv` (all CSV files)
+- **Recursion**: Disabled (same directory only)
+- **Iteration**: Sequential processing of matched files
 
-**OLE DB Command (for SCD Type 2):**
+**Nested Components** (within loop):
+
+##### a) **Copying Processed Files** (Script Task/Copy Operation)
+- **Purpose**: Archive processed CSV files to separate folder
+- **Destination**: `ProcessedFilesPath_var` (typically `/Processed` subdirectory)
+- **Execution**: Post-processing cleanup after successful load
+
+##### b) **Data Flow Task** (Embedded within loop)
+- **Structure**: Similar to Package 1 with modifications
+- **Components**:
+  - **Products Source**: Reads current enumerated CSV file
+  - **Trim Dates**: Date standardization (identical to Package 1)
+  - **Lookup for New ProductID**: Dimensional lookup (identical to Package 1)
+  - **Add IsCurrent Column 1**: Slowly changing dimension flag
+  - **Split Based on Changes 1**: Change detection routing
+  - **Staging DB Table** (OLEDBDestination): Loads to intermediate staging table
+  - **Products DB Table** (OLEDBDestination): Optional direct load to final dimension
+
+#### 2. **Truncate Staging Table** (Execute SQL Task)
+- **Execution Order**: Pre-loop initialization
+- **SQL Operation**: `TRUNCATE TABLE [StagingTable]`
+- **Purpose**: Clear staging layer before first file processing
+- **Error Handling**: Ensures fresh state for loop iterations
+
+#### 3. **Staging Table Row Count** (Execute SQL Task)
+- **Execution Timing**: Post-loop completion
+- **Query**: Row count audit query against staging table
+- **Output**: Captures total records processed across all files
+- **Logging**: Stored in metrics/audit table or execution log
+
+#### 4. **Slowly Changing Dim Script** (Execute SQL Task)
+- **Execution**: Final post-processing step
+- **SQL Implementation**: Slowly Changing Dimension Type 2 logic
+- **Operations**:
+  - Mark existing product versions as inactive (`IsCurrent = 0`)
+  - Set old record `ValidityDate_End` to current date
+  - Insert new/changed products as current versions
+  - Set new record `ValidityDate_Start` to current date
+  - Maintain complete historical audit trail
+- **Target**: Products warehouse dimension table
+
+### Transformation Logic Summary
+
+```
+TRUNCATE Staging Table
+        ↓
+ForEach CSV File:
+├── Read CSV via Products Source
+├── Trim Dates
+├── Lookup Product ID
+├── Add IsCurrent Flag
+├── Split Changes
+├── Load to Staging Table
+└── Copy CSV to Processed Folder
+        ↓
+Get Staging Table Row Count
+        ↓
+Execute SCD Type 2 SQL Script
+        ↓
+Update Products Dimension Table
+```
+
+---
+
+## Data Flow Design Patterns
+
+### Pattern 1: Source → Validation → Transformation → Destination
+
+All packages implement this foundational ETL pattern with quality gates at each stage.
+
+### Pattern 2: Conditional Routing (Split Based on Changes)
+
+Instead of processing all rows identically, the solution branches logic:
+
+```
+Input Stream
+    ↓
+Change Detection Logic
+    ├→ [NEW] Records Branch → Insert operations
+    ├→ [UPDATED] Records Branch → Update commands
+    └→ [UNCHANGED] Records Branch → Metrics only
+    ↓
+Union All (convergence)
+    ↓
+Final Destination
+```
+
+### Pattern 3: Lookup-Based Dimensionality
+
+- **Source**: Incoming product records from CSV
+- **Lookup Table**: Existing product dimension
+- **Output**: Matched dimension keys and change indicators
+- **Function**: Enables efficient change tracking and SCD implementation
+
+### Pattern 4: Multi-Layer Staging Architecture (Package 2)
+
+```
+Source Files → Data Flow → Staging Tables → SQL Post-Processing → Final Dimension
+```
+
+This separation enables:
+- Atomicity: All-or-nothing file processing
+- Audit Trail: Historical record of staging states
+- Error Recovery: Ability to reprocess failed files
+- Performance: Batch SQL operations on staged data
+
+### Pattern 5: Slowly Changing Dimension Type 2 Implementation
+
+Dimensional tables maintain complete history with validity date ranges:
+
+```
+New Product Record Example:
+{
+  ProductID: 123,
+  ProductName: "Road Bike",
+  IsCurrent: 1,
+  ValidityDate_Start: 2025-08-07,
+  ValidityDate_End: NULL  (open-ended for current version)
+}
+
+Historical Version After Update:
+{
+  ProductID: 123,
+  ProductName: "Road Bike",
+  IsCurrent: 0,
+  ValidityDate_Start: 2025-08-07,
+  ValidityDate_End: 2025-11-05  (marked as inactive)
+}
+
+New Version After Update:
+{
+  ProductID: 123,
+  ProductName: "Performance Road Bike",  (changed name)
+  IsCurrent: 1,
+  ValidityDate_Start: 2025-11-05,
+  ValidityDate_End: NULL  (new current version)
+}
+```
+
+---
+
+## Key Transformations
+
+### 1. Date Trimming (Trim Dates Component)
+
+**Purpose**: Standardize and clean date fields from source data
+
+**Applied Fields**:
+- SellStartDate
+- SellEndDate
+- DiscontinuedDate
+- ValidityDate_Start (created)
+- ValidityDate_End (created)
+
+**Transformation Logic**:
+```
+Original: "2012-06-20 00:00:00.000"
+Trimmed:  "2012-06-20"
+```
+
+### 2. Product Matching (Lookup for New ProductID)
+
+**Purpose**: Identify whether each product is new or existing
+
+**Lookup Configuration**:
+- **Input**: ProductNumber from source CSV
+- **Dimension Table**: Existing product master
+- **Match Key**: ProductNumber (unique identifier)
+- **Output**: Existing ProductID or NULL (for new products)
+
+**Implications**:
+- New products: Insert into dimension (NULL lookup result)
+- Existing products: Check for changes (conditional split)
+
+### 3. Change Detection (Split Based on Changes)
+
+**Purpose**: Route records based on detected modifications
+
+**Conditions Evaluated**:
+
+| Condition | Logic | Destination |
+|-----------|-------|-------------|
+| ProductName Changed | `CurrentName != LookupName` | UPDATE branch |
+| Price Changed | `ListPrice != PreviousPrice` | UPDATE branch |
+| No Changes | Both conditions false | No-change counting |
+
+**Output Routing**: Deterministic branching ensures all records flow to appropriate processing logic
+
+### 4. Slowly Changing Dimension Flag (Add IsCurrent Column)
+
+**Purpose**: Mark records as current or historical version
+
+**Expression**: `IsCurrent = 1`
+
+**Interpretation**:
+- `IsCurrent = 1`: Latest active version of product
+- `IsCurrent = 0`: Historical/superseded version
+- Used alongside ValidityDate_End for temporal queries
+
+**Query Example**:
 ```sql
-UPDATE prod.DimProduct 
-SET IsCurrent = 0, ValidityDate_End = GETDATE()
-WHERE ProductID = ? AND IsCurrent = 1
+SELECT ProductID, ProductName, ListPrice
+FROM Products
+WHERE IsCurrent = 1 AND ValidityDate_End IS NULL;
 ```
 
-### 4. Error Handling & Logging
+### 5. Dimensional Hierarchy Processing
 
-- ✅ Flat File Source error output
-- ✅ Lookup transformation error routing
-- ✅ OLE DB Destination error capture
-- ✅ Row count tracking
-- ✅ Execution logging via SSIS catalog
-- ✅ File archiving after processing
-
----
-
-## Project Structure
-
+**Hierarchy Levels**:
 ```
-adventureworks-products-etl/
-│
-├── README.md
-├── LICENSE
-├── .gitignore
-│
-├── SSIS-Packages/
-│   ├── 1.-ETL_Products_single_File.xml    (212 KB)
-│   └── 2.-ETL_Products_Multi_Files.xml    (209 KB)
-│
-├── Sample-Data/
-│   └── ProductsUpdates.csv                 (8.6 KB, 104 rows)
-│
-├── Scripts/
-│   ├── BCP-Import-Products.cmd
-│   ├── SQLCMD-Load-Products.sql
-│   └── Deploy-SSIS-Package.ps1
-│
-└── Documentation/
-    ├── SETUP-GUIDE.md
-    ├── TROUBLESHOOTING.md
-    └── DATA-FLOW-DIAGRAM.png
+ProductCategoryID (e.g., 1 = Bikes)
+  └── ProductSubcategoryID (e.g., 1 = Mountain Bikes)
+        └── ProductID (e.g., 868 = Road-275 Black 58)
+              └── Product Attributes (Color, Size, Style, etc.)
 ```
 
-**Total Files**: 3 main files | **SSIS Packages**: 2 | **Sample Data**: 1 CSV
+**Handling**: Includes dimensional keys and descriptive names for degenerate dimensions
 
----
+### 6. Bulk Operations (OLE DB Command vs. OLE DB Destination)
 
-## Getting Started
-
-### Prerequisites
-
-- **SQL Server 2019+** (Express/Developer Edition works)
-- **SQL Server Integration Services (SSIS)**
-- **SQL Server Data Tools (SSDT)** for package editing
-- **AdventureWorks2022DWH Database** (from main project)
-
-### Quick Start (5 minutes)
-
-#### 1. Clone the Repository
-```bash
-git clone https://github.com/aharkane/adventureworks-products-etl.git
-cd adventureworks-products-etl
-```
-
-#### 2. Verify Database Connection
+**OLE DB Command** (Update operations):
 ```sql
--- Test connection to DWH
-USE AdventureWorks2022DWH;
-GO
-
--- Verify DimProduct table exists
-SELECT TOP 5 * FROM prod.DimProduct;
+UPDATE Products 
+SET ProductName = ? 
+WHERE ProductID = ?
 ```
 
-#### 3. Import SSIS Package
+**OLE DB Destination** (Insert/bulk loads):
+- Streaming mode for high-performance bulk inserts
+- Parallel execution possible
+- Memory-efficient for large datasets
 
-**Using SQL Server Data Tools (SSDT)**:
+---
+
+## Implementation Highlights
+
+### 1. Enterprise-Grade Error Handling
+
+Both packages implement error paths for common ETL failures:
+- Invalid file formats
+- Data type mismatches
+- Duplicate key violations
+- Lookup failures with NULL handling
+- Connection timeouts
+
+### 2. Row Count Tracking
+
+The `No changes Row Count` component (Row Sampling transformation) enables:
+- Real-time metrics on data flow volumes
+- Alerting when row counts exceed thresholds
+- Audit trail for compliance reporting
+- Performance monitoring of transformation pipeline
+
+### 3. File Processing Efficiency (Package 2)
+
+The Foreach Loop container with file enumerator pattern provides:
+- **Scalability**: Process hundreds of CSV files without code changes
+- **Manageability**: Simple folder-based source management
+- **Automation**: Scheduled execution for recurring data loads
+- **Cleanup**: Post-processing of loaded files (archive/delete)
+
+### 4. Modular Component Design
+
+Each transformation is independently configurable:
+- Derived Column expressions use business logic-friendly syntax
+- Lookup components cache dimension table in memory
+- Conditional splits enable complex routing logic
+- Union All components handle heterogeneous input schemas
+
+### 5. Data Type Precision
+
+Product catalog includes multiple data types:
+- **Strings**: ProductName, ProductColor, ProductStyle
+- **Decimals**: StandardCost, ListPrice (pricing precision)
+- **Integers**: ProductID, Quantity metrics
+- **Dates**: SellStartDate through ValidityDate_End
+- **Booleans**: IsCurrent flag
+- **Strings (enums)**: ProductLine (R, M, T, S, W)
+
+### 6. Real-World Product Dimensions
+
+Dataset includes:
+- Complete product hierarchy (category → subcategory → product)
+- Pricing information (StandardCost vs. ListPrice)
+- Physical attributes (Size, Weight with unit codes)
+- Temporal validity (sell start/end dates)
+- Categorical attributes (Color, Style, Line)
+
+---
+
+## Data Processing Workflow
+
+### Package 1 Execution Flow
+
 ```
-1. Open Visual Studio with SSDT
-2. File → New → Integration Services Project
-3. Right-click Project → Add Existing Package
-4. Select: 1.-ETL_Products_single_File.xml
-5. Configure connection strings (see below)
+1. Read CSV File
+   ├─ Input: Flat file with ~50+ products
+   ├─ Fields: ProductNumber, ProductID, Category IDs, Name, Pricing, Sizes, Dates
+   └─ Output: Row stream to pipeline
+
+2. Trim Dates
+   ├─ Clean datetime fields to date format
+   └─ Output: Standardized dates
+
+3. Lookup Product ID
+   ├─ Cross-reference each product against dimension
+   ├─ Determine: New product vs. Existing product
+   └─ Output: Lookup result (ID or NULL)
+
+4. Add IsCurrent Flag
+   ├─ Mark all incoming as current version (1)
+   └─ Output: Row with IsCurrent = 1
+
+5. Split Based on Changes
+   ├─ Evaluate: ProductName changed? ListPrice changed?
+   ├─ Route: To UPDATE branch or No-Change branch
+   └─ Output: Two parallel streams
+
+6a. [UPDATE Branch]
+    ├─ ProductName Change: Execute SQL UPDATE for name
+    ├─ UnitPrice Change: Execute SQL UPDATE for price
+    └─ Output: Modified records
+
+6b. [No-Change Branch]
+    ├─ No changes Row Count: Count unchanged records
+    └─ Output: Metrics
+
+7. Union All
+   ├─ Merge both branches back to single stream
+   └─ Output: Unified result set
+
+8. OLE DB Destination
+   ├─ Bulk insert to Products warehouse table
+   ├─ Column mapping: Source columns → Destination columns
+   └─ Output: Final dimensional table with complete record
 ```
 
-**Using SSIS Catalog Deployment**:
-```powershell
-# PowerShell script to deploy
-.\Scripts\Deploy-SSIS-Package.ps1 `
-    -ServerName "YOUR_SERVER" `
-    -CatalogFolder "AdventureWorks" `
-    -ProjectName "ProductsETL"
-```
+### Package 2 Execution Flow
 
-#### 4. Configure Connection Managers
-
-**Connection Manager #1: CSV Files** (Flat File Connection)
 ```
-Name: ProductUpdates_CSV
-File Path: C:\Data\ProductsUpdates.csv
-Format: Delimited
-Header Row Delimiter: {CR}{LF}
-Column Delimiter: Comma {,}
-Text Qualifier: None
-```
+INITIALIZATION PHASE:
+1. Truncate Staging Table
+   └─ Clear any residual data from previous runs
 
-**Connection Manager #2: DWH Database** (OLE DB Connection)
-```
-Name: LocalHost.AdvWrk
-Provider: SQL Server Native Client 11.0
-Server: YOUR_SQL_SERVER
-Database: AdventureWorks2022DWH
-Authentication: Windows or SQL Server
-```
+FOREACH LOOP PHASE (repeat for each *.csv file):
+2. Enumerate CSV Files
+   ├─ Iterate: D:\...\Data\*.csv
+   └─ Process: Each file in sequence
 
-#### 5. Execute Package
+3. Read CSV File
+   ├─ Input: Current enumerated CSV file
+   └─ Output: Row stream
 
-**From SSDT** (Development):
-```
-1. Right-click package
-2. Execute Package
-3. Monitor Progress tab
-4. Verify green checkmarks
-```
+4. Trim Dates + Lookup + IsCurrent (identical to Package 1)
+   └─ Output: Enhanced row stream
 
-**From SSIS Catalog** (Production):
-```sql
--- Execute via T-SQL
-DECLARE @execution_id BIGINT
-EXEC [SSISDB].[catalog].[create_execution] 
-    @package_name = N'1.-ETL_Products_single_File.dtsx',
-    @execution_id = @execution_id OUTPUT,
-    @folder_name = N'AdventureWorks',
-    @project_name = N'ProductsETL'
+5. Split Based on Changes
+   ├─ Route: Changes to UPDATE branch, No-Changes to counting
+   └─ Output: Two streams
 
-EXEC [SSISDB].[catalog].[start_execution] @execution_id
+6. Load to Staging DB Table
+   ├─ Bulk insert into intermediate staging table
+   ├─ Purpose: Accumulate all files' data before SCD processing
+   └─ Output: Aggregated staging table
+
+7. Copy CSV to Processed Folder
+   ├─ Archive: Move processed CSV to /Processed subfolder
+   ├─ Purpose: Prevent re-processing, maintain history
+   └─ Output: File in archive location
+
+[Loop back to step 2 for next CSV file]
+
+POST-PROCESSING PHASE:
+8. Staging Table Row Count
+   ├─ Query: COUNT(*) from staging table
+   ├─ Capture: Total rows from all processed files
+   └─ Output: Row count metric
+
+9. Slowly Changing Dim Script
+   ├─ SQL Operations:
+   │  ├─ UPDATE existing: Set IsCurrent=0, ValidityDate_End=TODAY()
+   │  ├─ INSERT new: Add new versions with IsCurrent=1, ValidityDate_End=NULL
+   │  └─ MERGE logic: Handle both inserts and updates efficiently
+   └─ Output: Updated Products dimension table
+
+COMPLETION:
+10. All files processed, dimension table contains complete historical record
+    with current versions marked (IsCurrent=1) and ValidityDate_End=NULL
 ```
 
 ---
 
-## ETL Process Flow
+## Database Schema Reference
 
-### Execution Sequence (Single File Package)
+### Source Format (CSV Input)
 
 ```
-STEP 1: EXTRACT
-├─> Flat File Source: Read ProductsUpdates.csv
-├─> Parse 23 columns (ProductID, ProductName, ListPrice, etc.)
-└─> Output: 104 rows to data flow
-
-STEP 2: TRANSFORM
-├─> Derived Column: Trim & convert dates
-│   ├─> SellStartDate: CONVERT to DATETIME
-│   ├─> SellEndDate: CONVERT to DATETIME
-│   └─> ValidityDate_Start/End: SET values
-│
-├─> Lookup: Query prod.DimProduct by ProductID
-│   ├─> Match Output (78 rows): Existing products
-│   └─> No Match Output (26 rows): New products
-│
-├─> Conditional Split (on Match Output only)
-│   ├─> No Change: ProductName = dest_ProductName AND ListPrice = dest_ListPrice (52 rows)
-│   ├─> SCD Type 1: ProductName ≠ dest_ProductName (14 rows)
-│   └─> SCD Type 2: ListPrice ≠ dest_ListPrice (12 rows)
-│
-└─> Derived Column: Add IsCurrent = 1
-
-STEP 3: LOAD
-├─> OLE DB Command (SCD Type 2 only): UPDATE IsCurrent = 0 for old versions
-├─> Union All: Combine all flows
-├─> OLE DB Destination: INSERT/UPDATE prod.DimProduct
-└─> Row Count: Track loaded records
-
-STEP 4: FINALIZE
-└─> File System Task: Move processed CSV to archive folder
+ProductNumber, ProductID, ProductCategoryID, ProductSubcategoryID,
+ProductName, ProductCategoryName, ProductSubcategoryName,
+ProductColor, ProductStyle, ProductLine,
+StandardCost, ListPrice,
+ProductSize, UnitSizeCode, UnitSizeName,
+ProductWeight, UnitWeightCode, UnitWeightName,
+SellStartDate, SellEndDate, DiscontinuedDate,
+ValidityDate_Start, ValidityDate_End
 ```
 
-### SCD Type 2 Example
+### Sample Data Records
 
-```sql
--- Before: Product price changes from $1,295.99 to $1,495.99
-ProductDWKey | ProductID | ProductName | ListPrice | IsCurrent | ValidityDate_Start | ValidityDate_End
-1            | 680       | HL Road Frame | 1295.99 | 1         | 2024-01-01        | 9999-12-31
+```
+BB-3184, 437, (NULL), (NULL), Road Bottom Bracket, (NULL), (NULL),
+(NULL), (NULL), (NULL),
+0.00, 0.00,
+(NULL), (NULL), (NULL),
+(NULL), (NULL), (NULL),
+2009-03-15, (NULL), (NULL),
+2020-06-18, 2030-02-14
 
--- After: ETL processes price change
-ProductDWKey | ProductID | ProductName | ListPrice | IsCurrent | ValidityDate_Start | ValidityDate_End
-1            | 680       | HL Road Frame | 1295.99 | 0         | 2024-01-01        | 2024-11-05  ← Historical
-2            | 680       | HL Road Frame | 1495.99 | 1         | 2024-11-05        | 9999-12-31  ← Current
+SK-C827-M, 828, 3, 23, Racing Bike Socks M, Clothing, Socks,
+Black, U, R,
+4.1825, 11.50,
+M, (NULL), (NULL),
+(NULL), (NULL), (NULL),
+2012-06-20, 2013-06-19, (NULL),
+2021-04-15, 2026-09-11
 
--- Time travel query: "What was the price in March 2024?"
-SELECT ListPrice 
-FROM prod.DimProduct
-WHERE ProductID = 680
-  AND '2024-03-01' BETWEEN ValidityDate_Start AND ValidityDate_End
--- Returns: $1,295.99
+FR-T42B-62, 847, 2, 14, Performance Road Frame - Black 62, Components, Road Frames,
+Black, U, R,
+225.8914, 425.75,
+62, CM, Centimeter,
+2.85, LB, US pound,
+2012-06-20, 2014-06-19, (NULL),
+2020-11-19, 2028-02-14
+
+BK-T84B-58, 868, 1, 2, Road-275 Black 58, Bikes, Road Bikes,
+Black, U, R,
+2689.5124, 4295.50,
+58, CM, Centimeter,
+16.50, LB, US pound,
+2012-06-20, 2013-06-19, (NULL),
+2021-09-22, 2030-10-18
 ```
 
 ---
 
-## Command-Line Tools
+## Skills Summary
 
-### BCP (Bulk Copy Program) - Fast CSV Import
+This project demonstrates proficiency across the full spectrum of enterprise ETL development:
 
-**Use BCP for initial bulk loads or large CSV files:**
-
-#### Export from DWH to CSV
-```cmd
-REM Export DimProduct to CSV file
-bcp "SELECT * FROM AdventureWorks2022DWH.prod.DimProduct" ^
-    queryout "C:\Data\ProductsExport.csv" ^
-    -S YOUR_SERVER ^
-    -T ^
-    -c ^
-    -t "," ^
-    -r "\n"
-```
-
-#### Import CSV to Staging Table
-```cmd
-REM Create staging table first
-sqlcmd -S YOUR_SERVER -d AdventureWorks2022DWH -Q ^
-"CREATE TABLE stg.Products_Import (
-    ProductNumber VARCHAR(50),
-    ProductID INT,
-    ProductName VARCHAR(100),
-    ListPrice MONEY,
-    StandardCost MONEY,
-    ProductColor VARCHAR(30)
-)"
-
-REM Bulk import CSV
-bcp AdventureWorks2022DWH.stg.Products_Import ^
-    IN "C:\Data\ProductsUpdates.csv" ^
-    -S YOUR_SERVER ^
-    -T ^
-    -c ^
-    -t "," ^
-    -F 2 ^
-    -e "C:\Data\errors.log"
-```
-
-**BCP Parameters Explained:**
-```
--S YOUR_SERVER         Server name
--d DATABASE           Database name
--T                    Trusted connection (Windows Auth)
--c                    Character data type
--t ","                Field terminator (comma)
--r "\n"               Row terminator (newline)
--F 2                  First row to import (skip header)
--e errors.log         Error log file
-```
-
-### SQLCMD - Script-Based Loading
-
-**Use SQLCMD for scripted, repeatable ETL processes:**
-
-#### Load CSV using BULK INSERT
-```sql
--- File: SQLCMD-Load-Products.sql
--- Execute: sqlcmd -S YOUR_SERVER -d AdventureWorks2022DWH -i SQLCMD-Load-Products.sql
-
-USE AdventureWorks2022DWH;
-GO
-
--- Create staging table
-IF OBJECT_ID('stg.Products_Staging', 'U') IS NOT NULL
-    DROP TABLE stg.Products_Staging;
-GO
-
-CREATE TABLE stg.Products_Staging (
-    ProductNumber VARCHAR(50),
-    ProductID INT,
-    ProductCategoryID INT,
-    ProductSubcategoryID INT,
-    ProductName VARCHAR(100),
-    ProductCategoryName VARCHAR(100),
-    ProductSubcategoryName VARCHAR(100),
-    ProductColor VARCHAR(30),
-    ProductStyle VARCHAR(4),
-    ProductLine VARCHAR(4),
-    StandardCost DECIMAL(19,4),
-    ListPrice DECIMAL(19,4),
-    ProductSize VARCHAR(10),
-    UnitSizeCode VARCHAR(6),
-    UnitSizeName VARCHAR(100),
-    ProductWeight DECIMAL(8,2),
-    UnitWeightCode VARCHAR(6),
-    UnitWeightName VARCHAR(100),
-    SellStartDate DATETIME,
-    SellEndDate DATETIME,
-    DiscontinuedDate DATETIME,
-    ValidityDate_Start DATETIME,
-    ValidityDate_End DATETIME
-);
-GO
-
--- Bulk insert from CSV
-BULK INSERT stg.Products_Staging
-FROM 'C:\Data\ProductsUpdates.csv'
-WITH (
-    FIRSTROW = 2,                 -- Skip header row
-    FIELDTERMINATOR = ',',        -- Comma delimited
-    ROWTERMINATOR = '\n',         -- Newline
-    TABLOCK,                      -- Performance optimization
-    ERRORFILE = 'C:\Data\Errors\Products_Errors.txt',
-    MAXERRORS = 10
-);
-GO
-
--- Verify load
-SELECT COUNT(*) AS RowsLoaded FROM stg.Products_Staging;
-GO
-
--- Call stored procedure to process SCD logic
-EXEC integration.LoadUpdatesProduct;
-GO
-
-PRINT 'Product load completed successfully';
-GO
-```
-
-#### Execute SQLCMD Script
-```cmd
-REM Execute SQL script with variables
-sqlcmd -S YOUR_SERVER ^
-    -d AdventureWorks2022DWH ^
-    -i Scripts\SQLCMD-Load-Products.sql ^
-    -v CSVPath="C:\Data\ProductsUpdates.csv" ^
-    -o "C:\Logs\Load_Products_%date:~-4,4%%date:~-10,2%%date:~-7,2%.log"
-```
-
-### Batch Script for Automated Loading
-
-**Complete batch file combining BCP and SQLCMD:**
-
-```batch
-@ECHO OFF
-REM File: BCP-Import-Products.cmd
-REM Purpose: Automated product CSV import and ETL processing
-
-SETLOCAL
-
-REM Configuration
-SET SERVER=YOUR_SQL_SERVER
-SET DATABASE=AdventureWorks2022DWH
-SET CSV_FILE=C:\Data\ProductsUpdates.csv
-SET LOG_PATH=C:\Logs
-SET ERROR_PATH=C:\Data\Errors
-
-REM Create directories if not exist
-IF NOT EXIST "%LOG_PATH%" MKDIR "%LOG_PATH%"
-IF NOT EXIST "%ERROR_PATH%" MKDIR "%ERROR_PATH%"
-
-REM Set timestamp for logging
-SET TIMESTAMP=%date:~-4,4%%date:~-10,2%%date:~-7,2%_%time:~0,2%%time:~3,2%%time:~6,2%
-SET TIMESTAMP=%TIMESTAMP: =0%
-
-ECHO ========================================
-ECHO Product ETL Process Started
-ECHO Time: %TIMESTAMP%
-ECHO ========================================
-
-REM Step 1: Verify CSV file exists
-IF NOT EXIST "%CSV_FILE%" (
-    ECHO ERROR: CSV file not found: %CSV_FILE%
-    EXIT /B 1
-)
-ECHO [OK] CSV file found: %CSV_FILE%
-
-REM Step 2: Create staging table
-ECHO [RUNNING] Creating staging table...
-sqlcmd -S %SERVER% -d %DATABASE% -Q "IF OBJECT_ID('stg.Products_Staging', 'U') IS NOT NULL DROP TABLE stg.Products_Staging; CREATE TABLE stg.Products_Staging (ProductNumber VARCHAR(50), ProductID INT, ProductName VARCHAR(100), ListPrice MONEY, StandardCost MONEY);" 
-IF %ERRORLEVEL% NEQ 0 (
-    ECHO [ERROR] Failed to create staging table
-    EXIT /B 1
-)
-ECHO [OK] Staging table created
-
-REM Step 3: BCP bulk load
-ECHO [RUNNING] Bulk loading CSV file...
-bcp AdventureWorks2022DWH.stg.Products_Staging IN "%CSV_FILE%" ^
-    -S %SERVER% -T -c -t "," -F 2 ^
-    -e "%ERROR_PATH%\BCP_Errors_%TIMESTAMP%.log"
-IF %ERRORLEVEL% NEQ 0 (
-    ECHO [ERROR] BCP import failed. Check error log.
-    EXIT /B 1
-)
-ECHO [OK] CSV loaded into staging
-
-REM Step 4: Execute ETL stored procedure
-ECHO [RUNNING] Processing SCD logic...
-sqlcmd -S %SERVER% -d %DATABASE% -Q "EXEC integration.LoadUpdatesProduct;" ^
-    -o "%LOG_PATH%\ETL_Log_%TIMESTAMP%.txt"
-IF %ERRORLEVEL% NEQ 0 (
-    ECHO [ERROR] ETL processing failed
-    EXIT /B 1
-)
-ECHO [OK] ETL processing completed
-
-REM Step 5: Archive CSV file
-ECHO [RUNNING] Archiving source file...
-MOVE "%CSV_FILE%" "%CSV_FILE%.processed_%TIMESTAMP%"
-ECHO [OK] File archived
-
-ECHO ========================================
-ECHO Product ETL Process Completed Successfully
-ECHO ========================================
-
-ENDLOCAL
-EXIT /B 0
-```
-
-#### Schedule with SQL Server Agent
-
-```sql
--- Create SQL Agent Job for daily execution
-USE msdb;
-GO
-
-EXEC dbo.sp_add_job
-    @job_name = N'Daily_Product_ETL_Load',
-    @enabled = 1,
-    @description = N'Loads product updates from CSV using BCP';
-GO
-
-EXEC dbo.sp_add_jobstep
-    @job_name = N'Daily_Product_ETL_Load',
-    @step_name = N'Run BCP Import Script',
-    @subsystem = N'CmdExec',
-    @command = N'C:\Scripts\BCP-Import-Products.cmd',
-    @retry_attempts = 3,
-    @retry_interval = 5;
-GO
-
-EXEC dbo.sp_add_schedule
-    @schedule_name = N'Daily_Midnight',
-    @freq_type = 4,              -- Daily
-    @freq_interval = 1,
-    @active_start_time = 000000; -- Midnight
-GO
-
-EXEC dbo.sp_attach_schedule
-    @job_name = N'Daily_Product_ETL_Load',
-    @schedule_name = N'Daily_Midnight';
-GO
-
-EXEC dbo.sp_add_jobserver
-    @job_name = N'Daily_Product_ETL_Load';
-GO
-```
+| Domain | Skills Demonstrated |
+|--------|---------------------|
+| **SSIS Development** | Package design, data flows, control flows, variables, expressions |
+| **Data Transformation** | Derived columns, lookups, conditional splits, unions, row operations |
+| **SQL Server Integration** | OLE DB connections, staging tables, T-SQL execution, data warehousing |
+| **Change Tracking** | SCD Type 2 implementation, temporal dimensions, audit trails |
+| **File Processing** | CSV parsing, Foreach loops, file enumerators, batch operations |
+| **Data Quality** | Validation, error handling, row counting, metrics collection |
+| **Performance Optimization** | Bulk operations, caching, parallelization-ready architecture |
+| **Solution Architecture** | Multi-layer staging, separation of concerns, scalable design |
 
 ---
 
-## Data Model
+## Conclusion
 
-### Sample CSV Input (ProductsUpdates.csv)
-
-```csv
-ProductNumber,ProductID,ProductCategoryID,ProductSubcategoryID,ProductName,ProductCategoryName,ProductSubcategoryName,ProductColor,ProductStyle,ProductLine,StandardCost,ListPrice,ProductSize,UnitSizeCode,UnitSizeName,ProductWeight,UnitWeightCode,UnitWeightName,SellStartDate,SellEndDate,DiscontinuedDate,ValidityDate_Start,ValidityDate_End
-BB-3184,437,,,Road Bottom Bracket,,,,,,,0.00,0.00,,,,,,2009-03-15 00:00:00.000,,,2020-06-18 00:00:00.000,2030-02-14 00:00:00.000
-FR-R92R-58,748,1,2,HL Road Frame - Red 58,Bikes,Road Bikes,Red,W,R,868.6342,1431.50,58,CM,centimeters,2.24,LB,pounds,2011-05-31 00:00:00.000,2012-05-30 00:00:00.000,,2024-11-05 00:00:00.000,9999-12-31 00:00:00.000
-```
-
-### Output Data (prod.DimProduct)
-
-```sql
-ProductDWKey | ProductID | ProductNumber | ProductName | ListPrice | StandardCost | IsCurrent | ValidityDate_Start | ValidityDate_End
-1            | 437       | BB-3184       | Road Bottom  | 0.00      | 0.00         | 1         | 2024-11-05        | 9999-12-31
-2            | 748       | FR-R92R-58    | HL Road Frame| 1431.50   | 868.63       | 1         | 2024-11-05        | 9999-12-31
-```
+These SSIS packages represent a comprehensive, production-ready ETL solution built on best practices in data integration. The dual-package approach (row-by-row precision vs. bulk loop processing) demonstrates flexibility in architectural choices, while the shared Slowly Changing Dimension Type 2 implementation ensures data integrity and historical accuracy. The project showcases readiness for enterprise data engineering roles and mastery of Microsoft's premier data integration platform.
 
 ---
 
-## Performance Metrics
-
-| Metric | Value | Details |
-|--------|-------|---------|
-| **CSV File Size** | 8.6 KB | 104 product records |
-| **Package Execution Time** | <30 seconds | Single file processing |
-| **Rows Processed** | 104 rows | From sample CSV |
-| **New Products Inserted** | 26 rows | No Match from lookup |
-| **SCD Type 1 Updates** | 14 rows | ProductName changes |
-| **SCD Type 2 Versions** | 12 rows | ListPrice changes |
-| **No Change (Skipped)** | 52 rows | Identical records |
-| **Total DimProduct Records** | 504 rows | Active products in DWH |
-
----
-
-## Related Projects
-
-This SSIS package is part of the **AdventureWorks Sales Analytics Platform**:
-
-### Core Data Warehouse
-- 📦 **Repository**: [adventureworks-sales-dwh](https://github.com/aharkane/adventureworks-sales-dwh)
-- ⭐ **Description**: Enterprise DWH with metadata-driven ETL, 19 stored procedures, star schema
-- 🔗 **Connection**: This package loads prod.DimProduct in the DWH
-
-### Project Ecosystem
-
-```
-┌─────────────────────────────────────────────┐
-│  AdventureWorks2022 OLTP (Source System)   │
-└─────────────────────────────────────────────┘
-                 │
-                 ▼
-┌─────────────────────────────────────────────┐
-│  [adventureworks-sales-dwh]                │
-│  Enterprise Data Warehouse                  │
-│  • 19 T-SQL Stored Procedures              │
-│  • Metadata-Driven Framework               │
-│  • 5 Dimensions + 1 Fact Table             │
-│  • SCD Type 0/1/2 Implementation           │
-└─────────────────────────────────────────────┘
-                 │
-                 ▼
-┌─────────────────────────────────────────────┐
-│  [adventureworks-products-etl] ← YOU ARE HERE
-│  SSIS Product Loading Package              │
-│  • CSV File Processing                     │
-│  • 2 SSIS Packages                         │
-│  • Loads → prod.DimProduct                 │
-└─────────────────────────────────────────────┘
-                 │
-                 ▼
-┌─────────────────────────────────────────────┐
-│  [Future: adventureworks-powerbi-analytics]│
-│  Power BI Dashboards                       │
-│  • Product Performance Analysis            │
-│  • Interactive Visualizations              │
-└─────────────────────────────────────────────┘
-```
-
----
-
-## Monitoring & Troubleshooting
-
-### Check SSIS Execution Logs
-```sql
--- Query execution history from SSIS Catalog
-SELECT 
-    execution_id,
-    folder_name,
-    project_name,
-    package_name,
-    status,
-    start_time,
-    end_time,
-    DATEDIFF(SECOND, start_time, end_time) AS duration_seconds
-FROM [SSISDB].[catalog].[executions]
-WHERE package_name LIKE '%Product%'
-ORDER BY execution_id DESC;
-```
-
-### Validate Data Load
-```sql
--- Check recent product loads
-SELECT 
-    ProductID,
-    ProductName,
-    ListPrice,
-    IsCurrent,
-    ValidityDate_Start,
-    ValidityDate_End
-FROM prod.DimProduct
-WHERE ValidityDate_Start >= CAST(GETDATE() AS DATE)
-ORDER BY ValidityDate_Start DESC;
-
--- Count SCD Type 2 versions
-SELECT 
-    ProductID,
-    COUNT(*) AS version_count
-FROM prod.DimProduct
-GROUP BY ProductID
-HAVING COUNT(*) > 1
-ORDER BY version_count DESC;
-```
-
-### Common Issues
-
-| Issue | Cause | Solution |
-|-------|-------|----------|
-| CSV file not found | Incorrect path | Verify file path in Flat File Connection Manager |
-| Data type mismatch | Column format mismatch | Check column data types in CSV vs. destination |
-| Lookup failure | Connection string error | Test OLE DB connection to DWH |
-| Truncation errors | Column size too small | Adjust VARCHAR lengths in destination table |
-| Permission denied | SQL Server permissions | Grant INSERT/UPDATE on prod.DimProduct |
-
----
-
-## Author
-
-**Harkane Amine**
-- 💼 LinkedIn: [Harkane Amine](https://www.linkedin.com/in/aharkane/)
-- 🐙 GitHub: [@aharkane](https://github.com/aharkane)
-- 📧 Email: [harkaneamine@gmail.com](mailto:harkaneamine@gmail.com)
-
-### Project Evolution
-
-This project demonstrates practical ETL automation skills:
-- Phase 1 ✅: Built enterprise DWH with metadata-driven framework
-- Phase 2 ✅: Automated product loading with SSIS (this project)
-- Phase 3 🔜: Power BI analytics dashboards
-- Phase 4 🔜: Real-time streaming analytics
-
----
-
-## License
-
-This project is licensed under the MIT License - see the LICENSE file for details.
-
----
-
-## Acknowledgments
-
-- **Microsoft** - AdventureWorks sample database
-- **Kimball Group** - Dimensional modeling methodology
-- **SSIS Documentation** - Integration Services reference
-
----
-
-<div align="center">
-
-**⭐ If you found this project helpful, please give it a star! ⭐**
-
-Made with ❤️ and ☕ by [Harkane Amine](https://github.com/aharkane)
-
-*Last Updated: November 2025*
-
-</div>
+**Created**: August 7, 2025  
+**SSIS Version**: 17.0.1008.3 (SQL Server 2022)  
+**Development Environment**: SQL Server Data Tools (SSDT)  
+**Portfolio Status**: Ready for GitHub publication and professional showcase
