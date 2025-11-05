@@ -1,0 +1,12 @@
+<?xml version="1.0"?>
+<DTS:ConnectionManager xmlns:DTS="www.microsoft.com/SqlServer/Dts"
+  DTS:ObjectName="LocalHost.AdvWrk"
+  DTS:DTSID="{1606C837-52D0-43A4-81AF-9B0E88EED611}"
+  DTS:CreationName="OLEDB">
+  <DTS:ObjectData>
+    <DTS:ConnectionManager
+      DTS:ConnectRetryCount="1"
+      DTS:ConnectRetryInterval="5"
+      DTS:ConnectionString="Data Source=.;Initial Catalog=AdvWrks2022_DWH;Provider=MSOLEDBSQL.1;Integrated Security=SSPI;Auto Translate=False;Application Name=SSIS-1  Products  RowByRow ETL-{1606C837-52D0-43A4-81AF-9B0E88EED611}LocalHost.AdvWrk;" />
+  </DTS:ObjectData>
+</DTS:ConnectionManager>
