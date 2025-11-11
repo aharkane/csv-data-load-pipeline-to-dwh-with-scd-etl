@@ -6,14 +6,14 @@
 
 1. [Overview](#overview)
 2. [Technical Skills Demonstrated](#technical-skills-demonstrated)
-3. [Package 1: Single File Product.csv RowbyRow ETL](#package-1-single-file-productcsv-rowbyrow-etl)
-4. [Package 2: Batch Multi-File Product*.csv Bulk Load ETL](#package-2--batch-multi-file-productcsv-bulk-load-etl)
+3. [Package 1: Single File Product.csv RowbyRow Load Pipeline](#package-1-single-file-productcsv-rowbyrow-load-pipeline)
+4. [Package 2: Batch Multi-File Product*.csv Bulk Load Pipeline](#package-2--batch-multi-file-productcsv-bulk-load-pipeline)
 
 
 ---
 ## Overview
 
-ETL solution featuring two processing approaches for product data: row-by-row direct processing and batch multi-file operations. Implements SCD Type 2 for complete historical tracking of product changes (name, price, new products).
+Data load pipeline solution featuring two processing approaches for product data: row-by-row direct processing and batch multi-file operations. Implements SCD Type 2 for complete historical tracking of product changes (name, price, new products).
 
 ---
 
@@ -42,8 +42,8 @@ ETL solution featuring two processing approaches for product data: row-by-row di
 
 ---
 
-## Package 1: Single File Product.csv RowbyRow ETL
-ETL pipeline row-by-row ETL pipeline designed for precision processing of product updates with immediate change detection and routing.
+## Package 1: Single File Product.csv RowbyRow Load Pipeline
+Data load pipeline row-by-row designed for precision processing of product updates with immediate change detection and routing.
 
 **Transformation Logic**
 
@@ -98,9 +98,9 @@ Raw CSV → Date Trim → Lookup → IsCurrent Flag → Split Changes
    └─ Output: Final dimensional table with complete record
 ```
 
-## Package 2:  Batch Multi-File Product*.csv Bulk Load ETL
+## Package 2:  Batch Multi-File Product*.csv Bulk Load Pipeline
 
-ETL pipeline with foreach looping capability, processing multiple CSV source files sequentially with comprehensive staging and SQL post-processing for slowly changing dimension implementation.
+Data load pipeline with foreach looping capability, processing multiple CSV source files sequentially with comprehensive staging and SQL post-processing for slowly changing dimension implementation.
 
 
 **User Variables**
